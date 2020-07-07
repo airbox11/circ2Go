@@ -1,12 +1,16 @@
-library(shiny)
+lib.loc <- '~/R/x86_64-redhat-linux-gnu-library/3.6'
 library(DT)
+library(shiny)
 library(stringr)
 library(shinydashboard)
-library(plotly)
-library(png)
+# library(plotly)
+library(plotly, lib.loc = lib.loc)
+# library(png)
+library(png, lib.loc = lib.loc)
 # library(dqshiny)
 # library(rhandsontable)
-dir.base <- '~/yan150/report_work_weekly/week2020_16_online_panel/2_shiny/3_rstudio_shiny_project'
+# dir.base <- '~/yan150/report_work_weekly/week2020_16_online_panel/2_shiny/3_rstudio_shiny_project'
+dir.base <- '/home/lyuya/shiny.server/circ2go'
 setwd(dir.base)
 
 ## 1) repare big datasets ====
