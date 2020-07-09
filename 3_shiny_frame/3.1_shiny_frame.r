@@ -90,53 +90,68 @@ get_shiny_modules <- function(){
     ## 1.2.2) body ====
     ## 1.2.21) flowR for GO panel ====
     flowR1.GoSelectButton <- fluidRow(
+        # fluidRow(column( 12, 
+        #                  selectizeInput(inputId = 'autoC1',
+        #                                 label = 'Search',
+        #                                 choices = x.short,
+        #                                 selected = 'shouldNotInTermsDict',
+        #                                 size = 10,
+        #                                 multiple = FALSE, # allow for multiple inputs
+        #                                 options = list(create = FALSE) # if TRUE, allows newly created inputs
+        #                    ),
+        #                  selectizeInput(inputId = 'autoC2',
+        #                                 label = 'Search',
+        #                                 choices = x.short,
+        #                                 selected = 'shouldNotInTermsDict',
+        #                                 size = 10,
+        #                                 multiple = FALSE, # allow for multiple inputs
+        #                                 options = list(create = FALSE)
+        #                  )
+        #                  )),
         column(3,
                selectizeInput(inputId = 'autoC1',
                               label = 'Search',
-                              choices = x.short,
+                              choices = x.short[1],
                               selected = 'shouldNotInTermsDict',
                               size = 10,
                               multiple = FALSE, # allow for multiple inputs
                               options = list(create = FALSE) # if TRUE, allows newly created inputs
                               )
         ),
-        
-        
+
+
         column(3,
                selectizeInput(inputId = 'autoC2',
                               label = 'Search',
-                              choices = x.short,
+                              choices = x.short[1],
                               selected = 'shouldNotInTermsDict',
                               size = 10,
                               multiple = FALSE, # allow for multiple inputs
                               options = list(create = FALSE)
                ),
-        ),
-        column(3,
-               actionButton(inputId = 'actB.goTerm', label = 'submit' )
         )
-    )
-    flowR2.table.goTerm <- fluidRow(
-        dataTableOutput("GoTermTable")
-    )
+        ) # flowR1.GoSelectButton
+
+    
+    flowR2.table.goTerm <- fluidRow(DTOutput("GoTermTable"))
     flowR2.verbtext.goTerm.defi <- fluidRow(
         tags$head(tags$style(HTML("pre { white-space: pre-wrap; word-break: keep-all; }"))),
-        tags$h4("Selected GO term definition"),
+        tags$h4("Definition for selected GO term", style = "font-weight: bold;"),
         verbatimTextOutput(outputId = 'goTermDefi'),
         tags$hr(style="border-color: black;")
     )
     flowR3.0.goHP <- fluidRow(
-       actionButton(inputId = 'GoGeneIDHp', label = 'heatmap geneID')
+       actionButton(inputId = 'GoGeneIDHp', label = 'Heatmap')
     )
     
     flowR301.goHP <- fluidRow(
-        tags$h4("Selected gene for heatmap:"),
-        verbatimTextOutput(outputId = 'go.vb.geneID.hp')
+        tags$h4("Heatmap for selected gene:", style = "font-weight: bold;padding-left:10px"),
+        tags$style("#go_vb_geneID_hp {
+    			margin-left:10px;
+    			}"),
+        verbatimTextOutput(outputId = 'go_vb_geneID_hp')
     )
-    
-    flowR3.table.goInfo <- fluidRow(
-        dataTableOutput("GoInfoTable")
-    )
+    flowR3.table.goInfo <- fluidRow(DTOutput("GoInfoTable"))
     ## 1.2.211) flowR for heatmap panel ====
     flowR.hp.vbtext <- fluidRow(
         tags$head(tags$style(HTML("pre { white-space: pre-wrap; word-break: keep-all; }"))),
@@ -154,17 +169,58 @@ get_shiny_modules <- function(){
             width = 12,
             uiOutput('ui2')
         )
-
-
     )
+    footer.all.pages <- div(class="navbar navbar-default navbar-fixed-bottom", 
+                             div(
+                               fluidRow(column(12,div(style = "height:10px; background-color: grey100"))),
+                               fluidRow(
+                                 column(8,
+                                        class="container",
+                                        tags$strong( 
+                                          HTML('&ensp;&ensp;&ensp;&ensp;'),
+                                          (HTML("&copy; 2020 - ")), 
+                                          "(",
+                                          a(href="http://www.dkfz.de/en/molekulare-rna-biologie/projects.html", "Diederichs Lab/Projects - DKFZ Heidelberg", style = "color: #2950a3", target="_blank"),
+                                          ")"
+                                        )
+                                 ),
+                                 # column(4,
+                                 #        class="container"
+                                 #        # tags$strong(
+                                 #        #   a(href=RDeeP.database, "Link to R-DeeP database", style = "color: #2950a3", target="_blank")
+                                 #        #   #a(href=RDeeP.address, "Caudron-Herger et al., 2019, Molecular Cell 75, 1–16", style = "color: #2950a3", target="_blank")
+                                 #        # )
+                                 # ),
+                                 # column(2,
+                                 #        ""
+                                 # ),
+                                 column(4,
+                                        # offset = 2,
+                                        tags$a(
+                                          img(height = 30, src = "image/DKFZ_Logo_Small.png",class = "pull-right"),
+                                          # imageOutput('logoImage2'),
+                                          href = "http://www.dkfz.de",
+                                          target = "_blank"
+                                        )		
+                                 )	   	   
+                               )
+                             ))
     
     ## 1.2.22) body itself ====
     body <- dashboardBody(
+        tags$script(HTML('
+        $(document).ready(function() {
+          $("header").find("nav").append(\'<span style="font-size: 20px;padding-top:0px; background: inherit;" class="myClass"><strong><font color="white"> A Comprehensive Database of RNA-Binding Proteins and their Functions </font></strong></span>\');
+        })
+       ')),
+        tags$head(tags$style(HTML('.form-group, .selectize-control {margin: 0px}
+                                               .box-body {padding-left: 30px;padding-right: 30px;}'))),
         tabItems(
             ## tab main page ====
             tabItem(tabName = "mainPage",
                     h2("first tab should be shown.."),
-                    imageOutput('logoImage')
+                    imageOutput('logoImage'),
+                    imageOutput('logoImage2')
             ),
             tabItem(tabName = 'tabAbout',
                     h2("first tab should be shown."),
@@ -200,109 +256,91 @@ get_shiny_modules <- function(){
                     ),
             ## tab circ span ====
             tabItem(tabName = "circSpan",
-                    h2("Dashboard tab content"),
-                    tags$p("p creates a paragraph of text."),
-                    # fluidRow(tags$head(includeScript("./www/returnClick_mainPage.js")),
-                    #         textInput("mpTextInput1", "", placeholder = "Enter text then hit return@", width = "100%"),
-                    #         actionButton("mpActB1", "Submit"),
-                    #         verbatimTextOutput("mpOutput1")
-                    # ),
-                    
-                    
+                    h2("circRNA Transcript Map", style = "font-weight: bold;"),
+                    # tags$p("p creates a paragraph of text."),
                     fluidRow(
-                        tags$head(includeScript("./www/returnClick_circSpan.js")),
-                        textInput(inputId = "textInput.geneName",
-                                  width = '250px',
-                                  # width = "100%",
-                                  label = "gene name/gene ID/transcript ID:",
-                                  # value = "ENSG00000135776",
-                                  placeholder = "eg: ENSG00000135776, ABCB10 "
-                        ),
-                        # selectizeInput(inputId = 'textInput.geneName',
-                        #                label = "gene name/gene ID/transcript ID:",
-                        #                choices = ggt,
-                        #                selected = 'shouldNotInTermsDict',
-                        #                size = 10,
-                        #                multiple = FALSE, # allow for multiple inputs
-                        #                options = list(create = FALSE) # if TRUE, allows newly created inputs
-                        # ),
-                        
-                        actionButton(inputId = 'Button.geneName',
+                        # tags$head(includeScript("./www/returnClick_circSpan.js")),
+                        box(width = 12,
+                            textInput(inputId = "textInput.geneName",
+                                      width = '250px',
+                                      # width = "100%",
+                                      label = "gene name/gene ID/transcript ID:",
+                                      # value = "ENSG00000135776",
+                                      placeholder = "eg: ENSG00000135776, ABCB10 "
+                                      ),
+                            actionButton(inputId = 'Button.geneName',
                                      label = 'Submit'
-                                     ),
-                        tags$h3(),
-                        tags$hr(style="border-color: black;")
-                    ),
+                                     ))),
                     fluidRow(
                       box(title = 'Gene Information',
                           width = 12,
-                          uiOutput('ui1')
-                          )
-                      ),
-                    tags$h3(),
-                    fluidRow(
-                        # actionButton(inputId = 'GoGeneIDHp.circSpan', label = 'circRNA Heatmap'),
-                        # helpText('gene heatmap based on selected transcript ID/circRNA ID'),
-                        tags$h4("circRNA Transcript Map")
-                        # verbatimTextOutput(outputId = 'ID_text')
-                        # textOutput("co_xy"),
-                        # textOutput("ID_text")
-                    ),
-                    box(width = 12,
-                        imageOutput("myImage",
-                                    height = '1000px',
-                                    click = "image_click",
-                                    hover = hoverOpts(
-                                    id = "image_hover",
-                                    delay = 0,
-                                    delayType = "throttle"),)
-                    ),
-            ), # tabItem circSpan
+                          uiOutput('ui1'))),
+                    fluidRow(box(width = 12,
+                                 fluidRow(tags$h4("circRNA Transcript Map")),
+                                 fluidRow(imageOutput("myImage",
+                                                      height = '1000px',
+                                                      click = "image_click",
+                                                      hover = hoverOpts(
+                                                        id = "image_hover",
+                                                        delay = 0,
+                                                        delayType = "throttle"),))))
+                    
+                    ), # tabItem circSpan
+            
             ## tab circ heatmap ====
             tabItem(tabName = 'TabcircHp',
-                    h2("Widgets tab content"),
-                    fluidRow(
+                    h2("circRNA Heatmap"),
+                    
+                    fluidRow(box(width = 12,
                         tags$head(includeScript("./www/returnClick_circHp.js")),
-                        # textInput(inputId = "textInput.geneName.heatmap", 
-                        #           label = "gene name/gene ID/transcript ID",
-                        #           width = '250px',
-                        #           value = "ENSG00000135776.4"
-                        # ),
-                        textInput(inputId = "textInput.geneName.heatmap", 
-                                  width = '250px',
-                                  # width = "100%",
-                                  label = "gene name/gene ID/transcript ID:",
-                                  # value = "ENSG00000135776",
-                                  placeholder = "eg: ENSG00000135776, ABCB10 "
-                        ),
-                        actionButton(inputId = 'Button.geneName.heatmap',
-                                     label = 'Submit'
-                        )
-                    ),
-                    flowR.hp.vbtext,
+                        fluidRow(
+                          textInput(inputId = "textInput.geneName.heatmap", 
+                                    width = '250px',
+                                    label = "gene name/gene ID/transcript ID:",
+                                    placeholder = "eg: ENSG00000135776, ABCB10 "
+                                    )), 
+                        fluidRow(actionButton(inputId = 'Button.geneName.heatmap',label = 'Submit')),
+                        )),
                     flowR.hp.box,
-                    fluidRow(
-                      downloadButton('DL_circ', 'Download data circ sum'),
-                      downloadButton('DL_circ_cellLines', 'Download data circ cellLines')
+                    fluidRow(box(width =12,
+                      fluidRow(plotlyOutput('plotlyHp1')),
+                      fluidRow(plotlyOutput('plotlyHp2')),
+                      fluidRow(downloadButton('DL_circ', 'Download data circ(sum)'),
+                               downloadButton('DL_circ_cellLines', 'Download data circ(cellLines)')),
+                      tags$br(),
+                      tags$br()
+                      )),
                     ),
-                    fluidRow(plotlyOutput('plotlyHp1')),
-                    fluidRow(plotlyOutput('plotlyHp2'))
-                    
-                    
-            ),
             ## tab go search ====
             tabItem(tabName = "goSearch",
-                    h2("Widgets tab content"),
-                    flowR1.GoSelectButton,
-                    flowR2.table.goTerm,
-                    flowR2.verbtext.goTerm.defi,
-                    flowR3.table.goInfo,
-                    flowR3.0.goHP,
-                    flowR301.goHP,
-                    downloadButton('DL_goInfo', 'Download data')
-            )
+                    h2("GO Search", style = "font-weight: bold;"),
+                    fluidRow(
+                      box(width = 12,
+                        flowR1.GoSelectButton,
+                        tags$style("#actBGoTerm {margin-left:10px;}"),  
+                        fluidRow(actionButton(inputId = 'actBGoTerm', label = 'submit'))
+                        )
+                    ),
+                    fluidRow(
+                      box(width = 12,
+                        flowR2.table.goTerm,
+                        flowR2.verbtext.goTerm.defi,
+                      )
+                    ),
+                    fluidRow(box(width = 12,
+                                 fluidRow(h4('Genes for selected GO term', style = "font-weight: bold;")),
+                                 flowR3.table.goInfo)),
+                    fluidRow(
+                      box(width = 12,
+                        fluidRow(flowR301.goHP),
+                        fluidRow(column(12,actionButton(inputId = 'GoGeneIDHp', label = 'Heatmap'), downloadButton('DL_goInfo', 'Download data'))),
+                        tags$br(),
+                        tags$br()
+                        ))
+                    )
+            ),# tabItems
+        footer.all.pages
         )
-    )
     
     
     # 1.3) ui ====
@@ -343,6 +381,14 @@ get_shiny_modules <- function(){
                  height = 300,
                  alt = "This is alternate text")
             }, deleteFile = FALSE)
+        output$logoImage2 <- renderImage({
+          outfile <- './www/image/DKFZ_Logo_Small.png'
+          list(src = outfile,
+               contentType = 'image/png',
+               width = 70,
+               height = 30,
+               alt = "This is alternate text")
+        }, deleteFile = FALSE)
         
         
         ## 141) circSpan ====
@@ -450,14 +496,17 @@ get_shiny_modules <- function(){
         })
         
         ## 142) Go Table ====
-        observeEvent(input$actB.goTerm, {
+        observeEvent(input$actBGoTerm, {
+            print('it works')
             x.s <- grep(isolate(input$autoC1), x.long, value=TRUE)
             x.s1 <- grep(isolate(input$autoC2), x.s, value=TRUE)
             # browser()
             vals$tb.term <- y4[y4$GO.term.name %in% x.s1,]
+            colnames(vals$tb.term) <- gsub('\\.', ' ', colnames(vals$tb.term))
             })
         
-        output$GoTermTable <- renderDataTable({vals$tb.term[,c(-3)]}, selection = 'single', rownames = FALSE)
+        output$GoTermTable <- renderDT(vals$tb.term[,c(-3)], selection = 'single', rownames = FALSE)
+        # output$GoTermTable <- renderDT(iris, selection = 'single', rownames=FALSE)
       
         observeEvent(input$GoTermTable_cell_clicked, {
             list.tb1.select <- isolate(input$GoTermTable_cell_clicked)
@@ -471,10 +520,11 @@ get_shiny_modules <- function(){
                 x3 <- x2[x2$geneID %in% x11,]
                 vals$go.term.defi <- go.term.defi
                 vals$tb.info <- x3
+                colnames(vals$tb.info) <- gsub('\\.', ' ', colnames(vals$tb.info))
                 }
             })
         output$goTermDefi <- renderText(vals$go.term.defi)
-        output$GoInfoTable <- renderDataTable({vals$tb.info}, selection = 'single', rownames = FALSE)
+        output$GoInfoTable <- renderDT(vals$tb.info, selection = 'single', rownames = FALSE)
         
         ##1423) flow3: table GO heatmap ====
         
@@ -486,7 +536,7 @@ get_shiny_modules <- function(){
                 }
             })
         
-        output$go.vb.geneID.hp <- renderText(vals$GoInfoTable.IDselected)
+        output$go_vb_geneID_hp <- renderText(vals$GoInfoTable.IDselected)
         
         observeEvent(input$GoGeneIDHp,{
             print('GoGeneIDHpButton:')

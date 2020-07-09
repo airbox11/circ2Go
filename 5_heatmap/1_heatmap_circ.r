@@ -24,12 +24,14 @@ get_single_plotly <- function(x){
         return(p2)
     }
     rownames(x3) <- rownames(x1)
+    colnames(x3) <- str_match(colnames(x3), '\\dD_(.*)')[,2]
     x4 <- log10(x3 +1 )
     dentree.count <- nrow(x4) -1
     if (dentree.count >3){
         dentree.count <- 3
         }
     hp1 <- heatmaply(x3, k_row = dentree.count, k_col = dentree.count,
+                     show_dendrogram = c(FALSE, FALSE),
                      showticklabels = c(FALSE,FALSE),
                      margins = c(10,10,NA,0))
     # ?heatmaply
