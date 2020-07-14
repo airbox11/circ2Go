@@ -59,6 +59,10 @@ get_shiny_modules <- function(){
     y2 <- y[y$GO.term.name != '',]
     y4 <- y2[!duplicated(y2$GO.term.name),]
     
+    ## database download 
+    d <- datasets$cft
+    cellLineNames <- str_match(colnames(d)[13:72], '\\dD_(.*)_\\d')[,2]
+    cellLineNames <- c('all cell lines', cellLineNames)
     ## 1.11) common value : genen name, geneID, transID 
     # df1 <- datasets$df.te.circGene.git
     # geneName <- unique(as.character(factor(df1$geneName)))
@@ -74,40 +78,21 @@ get_shiny_modules <- function(){
                           label = "Search..."),
         sidebarMenu(id = "sideBarID",
             menuItem(text = "circ2GO main page", tabName = "mainPage", selected = TRUE),
-            menuItem(text = "circRNA search", icon = icon("circle"),startExpanded = TRUE,
+            menuItem(text = "circRNA search", icon = icon("bars"),startExpanded = TRUE,
                      menuSubItem(text = 'circRNA Transcript Map',
                                  tabName = 'circSpan'),
                      menuSubItem(text = 'circRNA Heatmap',
                                  tabName = 'TabcircHp')
                      ),
-            menuItem(text = "GO Search", tabName = 'goSearch', icon = icon("circle"), 
-                     badgeLabel = "new", badgeColor = "green"),
-            menuItem(text = "link", icon = icon("file-code-o"), 
-                     href = "https://github.com/rstudio/shinydashboard/"),
-            menuItem(text = 'About', tabName = 'tabAbout')
+            menuItem(text = "GO Search", tabName = 'goSearch', icon = icon("bars")),
+            menuItem(text = 'Data Downloading', tabName = 'tabDownload', icon = icon('bars')),
+            menuItem(text = 'About', tabName = 'tabAbout1')
+            
         )
     )
     ## 1.2.2) body ====
     ## 1.2.21) flowR for GO panel ====
     flowR1.GoSelectButton <- fluidRow(
-        # fluidRow(column( 12, 
-        #                  selectizeInput(inputId = 'autoC1',
-        #                                 label = 'Search',
-        #                                 choices = x.short,
-        #                                 selected = 'shouldNotInTermsDict',
-        #                                 size = 10,
-        #                                 multiple = FALSE, # allow for multiple inputs
-        #                                 options = list(create = FALSE) # if TRUE, allows newly created inputs
-        #                    ),
-        #                  selectizeInput(inputId = 'autoC2',
-        #                                 label = 'Search',
-        #                                 choices = x.short,
-        #                                 selected = 'shouldNotInTermsDict',
-        #                                 size = 10,
-        #                                 multiple = FALSE, # allow for multiple inputs
-        #                                 options = list(create = FALSE)
-        #                  )
-        #                  )),
         column(3,
                selectizeInput(inputId = 'autoC1',
                               label = 'Search',
@@ -210,7 +195,7 @@ get_shiny_modules <- function(){
     body <- dashboardBody(
         tags$script(HTML('
         $(document).ready(function() {
-          $("header").find("nav").append(\'<span style="font-size: 20px;padding-top:0px; background: inherit;" class="myClass"><strong><font color="white"> A Comprehensive Database of RNA-Binding Proteins and their Functions </font></strong></span>\');
+          $("header").find("nav").append(\'<span style="font-size: 20px;padding-top:0px; background: inherit;" class="myClass"><strong><font color="white"> circ2go Database  </font></strong></span>\');
         })
        ')),
         tags$head(tags$style(HTML('.form-group, .selectize-control {margin: 0px}
@@ -337,8 +322,27 @@ get_shiny_modules <- function(){
                         tags$br(),
                         tags$br()
                         ))
+                    ),
+            ## tab download ====
+            tabItem(tabName = 'tabDownload', 
+                    h2('Download Data'),
+                    fluidRow(box(width = 12,
+                                 fluidRow(selectInput(inputId = "cellLineSelect", label = "Cell lines selection",
+                                                      choices = cellLineNames,
+                                                      multiple = TRUE)),
+                                 fluidRow(radioButtons(inputId = "radioConv", label = "gene/circRNA data",
+                                                       choices = c("circRNA level" = "circl",
+                                                                   "Gene level" = "genel")
+                                 )),
+                                 fluidRow(checkboxInput(inputId = "GOtermIn", label = "GO term included", value = TRUE)),
+                                 fluidRow(downloadButton(outputId = 'dlbulk', 'Download data'))
+                                 )
+                             )
                     )
+                   
             ),# tabItems
+
+        
         footer.all.pages
         )
     
@@ -346,7 +350,11 @@ get_shiny_modules <- function(){
     # 1.3) ui ====
     ui <- dashboardPage(
         # dashboardHeader(title = "circ2GO"),
-        dashboardHeader(title = HTML('<p style="font-size:100%;"><b style="font-size:160%;">circ2GO</b></p>')),
+        dashboardHeader(
+          # title = HTML('<p style="font-size:100%;"><b style="font-size:160%;">circ2GO</b></p>')
+          title = img(src = "image/circ2go.png", height = 60)
+          ),
+        
         sidebar,
         body
     )
@@ -532,7 +540,7 @@ get_shiny_modules <- function(){
             list.tb2.select <- isolate(input$GoInfoTable_cell_clicked)
             if(length(list.tb2.select) > 0){
                 go.info.index <- list.tb2.select[[1]]
-                vals$GoInfoTable.IDselected <- vals$tb.info[go.info.index,2]
+                vals$GoInfoTable.IDselected <- vals$tb.info[go.info.index,1]
                 }
             })
         
@@ -592,6 +600,34 @@ get_shiny_modules <- function(){
           content = function(file) {
             df <- readRDS('./0_data/df.geneID.circ.cellLines.rdata')
             write.csv(df, file)
+          })
+        ## 144) bulk downlaod ====
+        output$dlbulk <- downloadHandler(
+          filename = function() { 
+            paste("dataset_circRNA_readCounts.csv", sep="")
+          },
+          content = function(file) {
+            # edit
+            celllines <- isolate(input$cellLineSelect)
+            all <- 'all cell lines'
+            if(all %in% celllines)celllines<- cellLineNames[-1]
+            conv <- isolate(input$radioConv)
+            gotermIn <- isolate(input$GOtermIn)
+            if (conv == 'circl'){
+              e <- datasets$cft[,c(1:72)]
+              colnames(e)
+              colnames(e)[13:72] <- str_match(colnames(e)[13:72], '\\dD_(.*)_\\d')[,2]
+              e1 <- e[, colnames(e) %in% celllines]
+              e2 <- cbind(e[,c(1:12)], e1)
+              
+            }else{
+              e <- datasets$df.circ.conv[,c(1:64)]
+              colnames(e)
+              colnames(e)[5:64] <- str_match(colnames(e)[5:64], '\\dD_(.*)_\\d')[,2]
+              e1 <- e[, colnames(e) %in% celllines]
+              e2 <- cbind(e[,c(1:4)], e1)
+            }
+            write.csv(e2, file)
           })
         
     } # end of server

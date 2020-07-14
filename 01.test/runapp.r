@@ -1,1 +1,0 @@
-runApp('../circ2go/')

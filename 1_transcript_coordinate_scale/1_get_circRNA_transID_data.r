@@ -82,3 +82,7 @@ load_dataset<- function(){
     return(list1)
 }
 
+# dir.base <- '~/yan150/report_work_weekly/week2020_16_online_panel/2_shiny/3_rstudio_shiny_project'
+dir.base <- '/home/lyuya/shiny.server/circ2go'
+# setwd(dir.base)
+datasets <- load_dataset()
