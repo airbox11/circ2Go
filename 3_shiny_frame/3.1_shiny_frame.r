@@ -1,10 +1,16 @@
 
 ## 0) function: ====
+wait <- function(){
+  progress <- shiny::Progress$new()
+  on.exit(progress$close())
+  progress$set(message = "Please wait", value = 0)
+  progress$inc(0.95)
+}
+
+
 get_box_info <- function(geneID){
     x <- format_geneID(geneID)
     gene.symbol <- readRDS('./0_data/gene_alias.rdata')
-    
-    
     df <- datasets$df.te.circGene
     df <- df[df$LT == 'LT',]
     geneName <- df[df$geneID == x,]$geneName
@@ -28,7 +34,6 @@ get_box_info <- function(geneID){
 
 get_transID <- function(co.default){
     ## fetch df.th : ====
-    # df.th <- readRDS(file = '~/yan150/report_work_weekly/week2020_16_online_panel/2_shiny/3_rstudio_shiny_project/2_plot_in_frame/df.th.rdata')
     df.th <- readRDS(file = paste(dir.base, '2_plot_in_frame/df.th.rdata', sep = '/'))
     co.start <- readRDS(file = paste(dir.base, '2_plot_in_frame/co.start.rdata', sep = '/'))
     p.height.px <- readRDS(file = paste(dir.base, './2_plot_in_frame/p.height.px.rdata', sep = '/'))
@@ -63,19 +68,9 @@ get_shiny_modules <- function(){
     d <- datasets$cft
     cellLineNames <- str_match(colnames(d)[13:72], '\\dD_(.*)_\\d')[,2]
     cellLineNames <- c('all cell lines', cellLineNames)
-    ## 1.11) common value : genen name, geneID, transID 
-    # df1 <- datasets$df.te.circGene.git
-    # geneName <- unique(as.character(factor(df1$geneName)))
-    # geneID <- unique(as.character(factor(df1$geneID)))
-    # transID <- unique(as.character(factor(df1$transID)))
-    # ggt <- c(geneName)
-    # length(ggt)
-    
     ## 1.2) modules for panel ====
     ## 1.2.1) sidebar ====
     sidebar <- dashboardSidebar(
-        sidebarSearchForm(textId = "searchText", buttonId = "searchButton",
-                          label = "Search..."),
         sidebarMenu(id = "sideBarID",
             menuItem(text = "circ2GO main page", tabName = "mainPage", selected = TRUE),
             menuItem(text = "circRNA search", icon = icon("bars"),startExpanded = TRUE,
@@ -85,8 +80,9 @@ get_shiny_modules <- function(){
                                  tabName = 'TabcircHp')
                      ),
             menuItem(text = "GO Search", tabName = 'goSearch', icon = icon("bars")),
-            menuItem(text = 'Data Downloading', tabName = 'tabDownload', icon = icon('bars')),
-            menuItem(text = 'About', tabName = 'tabAbout1')
+            menuItem(text = 'Data Download', tabName = 'tabDownload', icon = icon('bars')),
+            menuItem(text = 'Help', tabName = 'tabHelp'),
+            menuItem(text = 'About', tabName = 'tabAbout')
             
         )
     )
@@ -96,7 +92,7 @@ get_shiny_modules <- function(){
         column(3,
                selectizeInput(inputId = 'autoC1',
                               label = 'Search',
-                              choices = x.short[1],
+                              choices = x.short,
                               selected = 'shouldNotInTermsDict',
                               size = 10,
                               multiple = FALSE, # allow for multiple inputs
@@ -108,7 +104,7 @@ get_shiny_modules <- function(){
         column(3,
                selectizeInput(inputId = 'autoC2',
                               label = 'Search',
-                              choices = x.short[1],
+                              choices = x.short,
                               selected = 'shouldNotInTermsDict',
                               size = 10,
                               multiple = FALSE, # allow for multiple inputs
@@ -140,10 +136,6 @@ get_shiny_modules <- function(){
     ## 1.2.211) flowR for heatmap panel ====
     flowR.hp.vbtext <- fluidRow(
         tags$head(tags$style(HTML("pre { white-space: pre-wrap; word-break: keep-all; }"))),
-        # tags$h4("Selected gene:"),
-        # verbatimTextOutput(outputId = 'hp.vb.geneID'
-        #                    # placeholder = 'Go term defination'
-        # ),
         tags$hr(style="border-color: black;")
     )
     
@@ -152,8 +144,18 @@ get_shiny_modules <- function(){
         # tags$h4("Selected gene:"),
         box(title = 'Gene Information',
             width = 12,
-            uiOutput('ui2')
+            uiOutput('ui2'),
+            tags$br(),
+            tags$h4(strong('GO terms')),
+            tags$style(HTML("hr {border-top: 1px solid #000000;}")),
+            tags$hr(),
+            fluidRow(DTOutput("GoTermTableInfobox1")),
+            tags$br(),
+            tags$h4("Definition for selected GO term", style = "font-weight: bold;"),
+            tags$hr(),
+            verbatimTextOutput(outputId = 'goTermDefi1')
         )
+        
     )
     footer.all.pages <- div(class="navbar navbar-default navbar-fixed-bottom", 
                              div(
@@ -169,16 +171,6 @@ get_shiny_modules <- function(){
                                           ")"
                                         )
                                  ),
-                                 # column(4,
-                                 #        class="container"
-                                 #        # tags$strong(
-                                 #        #   a(href=RDeeP.database, "Link to R-DeeP database", style = "color: #2950a3", target="_blank")
-                                 #        #   #a(href=RDeeP.address, "Caudron-Herger et al., 2019, Molecular Cell 75, 1–16", style = "color: #2950a3", target="_blank")
-                                 #        # )
-                                 # ),
-                                 # column(2,
-                                 #        ""
-                                 # ),
                                  column(4,
                                         # offset = 2,
                                         tags$a(
@@ -202,37 +194,82 @@ get_shiny_modules <- function(){
                                                .box-body {padding-left: 30px;padding-right: 30px;}'))),
         tabItems(
             ## tab main page ====
-            tabItem(tabName = "mainPage",
-                    h2("first tab should be shown.."),
-                    imageOutput('logoImage'),
-                    imageOutput('logoImage2')
-            ),
+            tabItem(tabName = "mainPage", #1
+                    fluidPage(
+                      fluidRow(column(12,
+                                      br(),
+                                      fluidRow(column(12, h1(strong("Welcome to circ2GO"), style = "color: #0073B7;font-size:40px")), align = "left"),
+                                      br(),
+                                      fluidRow(column(12,h4(HTML("
+                  Thousands of circular RNAs(circRNAs) have recently been shown to be expressed in eukaryotic cells. Here we provide a dataset of circRNA expression profiles for more than 50 LUAD(Lung adenocarcinoma) cell lines. You can explore circRNA datasets, view visualized circRNAs expressed on each gene, check exression level of circRNAs for each gene, and download the custom data to discover circRNAs interested. "))), align = "left"),
+                                      br(),
+                                      br(),
+                                      fluidRow(column(5, offset = 2,  
+                                                      fluidRow(
+                                                        valueBox(
+                                                          tags$p(HTML("<h5>Cell lines</h5>")),
+                                                          subtitle = div(
+                                                            fluidRow(
+                                                              column(6, h3("60", align = "left"))
+                                                            ),	
+                                                            style = "text-align: right;"
+                                                          ), 
+                                                          color = "blue",
+                                                          width = 8
+                                                        )
+                                                      )),
+                                               column(5, 
+                                                      fluidRow(
+                                                        valueBox(
+                                                          tags$p(HTML("<h5>circRNA candidates</h5>")),
+                                                          subtitle = div(
+                                                            fluidRow(
+                                                              column(6, h3("148806", align = "left"))
+                                                            ),	
+                                                            style = "text-align: right;"
+                                                          ), 
+                                                          color = "green",
+                                                          width = 8
+                                                        )
+                                                      ))
+                                      ), # fluidRow with valueBoxes
+                                      br(),
+                                      br(),
+                                      br(),
+                                      br(),
+                                      
+                                      fluidRow(column(12, h4(HTML("<strong>References</strong>"), style = "color: #000000"))),
+                                      fluidRow(column(12,h4(HTML("The Circular RNA Landscape of Non-Small Cell Lung Cancer Cells. <a href='https://www.mdpi.com/2072-6694/12/5/1091' target ='_blank'>Nele Van Der Steen <i>et al.</i> Cancers 2020</a>.")))),
+                                      br(),
+                                      br(),
+                                      br(),
+                                      br(),
+                                      br(),                    
+                                      imageOutput('logoImage'),
+                                      imageOutput('logoImage2'),
+                                      img(src = "image/Selection_046.png"),
+                                      img(src = "image/Selection_042.png")
+                                      # img(src = "image/circ2go2.png", height = 60)
+                      ))
+                    ) # end of fluidPage
+            ), # end tabItem #1
+            
+  
             tabItem(tabName = 'tabAbout',
-                    h2("first tab should be shown."),
-                    box( width = NULL, status = "warning", solidHeader = TRUE, title="About RBP2GO",
+                    fluidRow(column(12, h1(strong("About circ2GO"), style = "color: #0073B7;font-size:35px")), align = "left"),
+                    box( width = NULL, solidHeader = TRUE, 
+                         # title="About circ2GO",
                          fluidRow(column(12,h4(HTML("<strong>How to cite</strong>")))),
-                         fluidRow(column(12, h4(HTML("Manuscript in preparation"), style = "color: #000000"))),
-                         fluidRow(column(12, h4(HTML("RBP2GO: A comprehensive, pan-species database on RNA-binding proteins, their interactions and functions. Maïwen Caudron-Herger, Ralf E. Jansen, Elsa Wassmer and Sven Diederichs"), style = "color: #000000;"))),  
+                         fluidRow(column(12,h4(HTML("The Circular RNA Landscape of Non-Small Cell Lung Cancer Cells. <a href='https://www.mdpi.com/2072-6694/12/5/1091' target ='_blank'>Nele Van Der Steen <i>et al.</i> Cancers 2020</a>.")))),
                          br(),
                          fluidRow(column(12,h4(HTML("<strong>Related publications</strong>")))),
-                         fluidRow(column(12, h4("Caudron-Herger et al., R-DeeP: proteome-wide and quantitative identification of RNA-dependent proteins by density gradient ultracentrifugation"))),
-                         fluidRow(column(12, h4("2019, Molecular Cell 75, 1–16"))),
-                         a(href="https://www.cell.com/molecular-cell/fulltext/S1097-2765(19)30310-7", "doi.org/10.1016/j.molcel.2019.04.018", style="font-size: 17px; color: #2950a3", target="_blank"),
-                         br(),
-                         br(),
-                         br(),
-                         fluidRow(column(12, h4("Caudron-Herger et al., Identification, quantification and bioinformatic analysis of RNA-dependent proteins by RNase treatment and density gradient ultracentrifugation using R-DeeP"))),
-                         fluidRow(column(12, h4("2020, Nature Protocols 15, 1338–1370"))),
-                         a(href="https://www.nature.com/articles/s41596-019-0261-4", "doi.org/10.1038/s41596-019-0261-4", style="font-size: 17px; color: #2950a3", target="_blank"),
-                         br(),
                          br(),
                          br(),
                          fluidRow(column(12,h4(HTML("<strong>Related database</strong>")))),
-                         fluidRow(column(12, h4(HTML("<a href='http://R-DeeP.dkfz.de' target ='_blank'>R-DeeP: Database for RNA-dependent Proteins</a>")))),
                          br(),
                          br(),
                          fluidRow(column(12,h4(HTML("<strong>Contact</strong>")))),
-                         fluidRow(column(12, h4("The authors of the RBP2GO database can be contacted at the following email address") )),
+                         fluidRow(column(12, h4("The authors of the circ2GO database can be contacted at the following email address") )),
                          a(href="mailto:databases.diederichslab@dkfz.de","databases.diederichslab(at)dkfz.de",style="font-size: 17px; color: #2950a3"),
                          br(),
                          br()
@@ -242,9 +279,7 @@ get_shiny_modules <- function(){
             ## tab circ span ====
             tabItem(tabName = "circSpan",
                     h2("circRNA Transcript Map", style = "font-weight: bold;"),
-                    # tags$p("p creates a paragraph of text."),
                     fluidRow(
-                        # tags$head(includeScript("./www/returnClick_circSpan.js")),
                         box(width = 12,
                             textInput(inputId = "textInput.geneName",
                                       width = '250px',
@@ -253,13 +288,29 @@ get_shiny_modules <- function(){
                                       # value = "ENSG00000135776",
                                       placeholder = "eg: ENSG00000135776, ABCB10 "
                                       ),
-                            actionButton(inputId = 'Button.geneName',
+                            actionButton(inputId = 'ButtonGeneName',
                                      label = 'Submit'
                                      ))),
                     fluidRow(
                       box(title = 'Gene Information',
                           width = 12,
-                          uiOutput('ui1'))),
+                          uiOutput('ui1'),
+                          
+                          tags$br(),
+                          tags$h4(strong('GO terms')),
+                          tags$style(HTML("hr {border-top: 1px solid #000000;}")),
+                          tags$hr(),
+                          fluidRow(DTOutput("GoTermTableInfobox2")),
+                          tags$br(),
+                          tags$h4("Definition for selected GO term", style = "font-weight: bold;"),
+                          tags$hr(),
+                          verbatimTextOutput(outputId = 'goTermDefi2')
+                          
+                          
+                          
+                          
+                          
+                          )),
                     fluidRow(box(width = 12,
                                  fluidRow(tags$h4("circRNA Transcript Map")),
                                  fluidRow(imageOutput("myImage",
@@ -279,12 +330,12 @@ get_shiny_modules <- function(){
                     fluidRow(box(width = 12,
                         tags$head(includeScript("./www/returnClick_circHp.js")),
                         fluidRow(
-                          textInput(inputId = "textInput.geneName.heatmap", 
+                          textInput(inputId = "textInput_eneName_heatmap", 
                                     width = '250px',
                                     label = "gene name/gene ID/transcript ID:",
                                     placeholder = "eg: ENSG00000135776, ABCB10 "
                                     )), 
-                        fluidRow(actionButton(inputId = 'Button.geneName.heatmap',label = 'Submit')),
+                        fluidRow(actionButton(inputId = 'ButtonGeneNameHeatmap',label = 'Submit')),
                         )),
                     flowR.hp.box,
                     fluidRow(box(width =12,
@@ -318,29 +369,66 @@ get_shiny_modules <- function(){
                     fluidRow(
                       box(width = 12,
                         fluidRow(flowR301.goHP),
-                        fluidRow(column(12,actionButton(inputId = 'GoGeneIDHp', label = 'Heatmap'), downloadButton('DL_goInfo', 'Download data'))),
+                        fluidRow(column(12,
+                                        actionButton(inputId = 'GoGeneIDcm', label = 'circRNA map'), 
+                                        actionButton(inputId = 'GoGeneIDHp', label = 'Heatmap'), 
+                                        downloadButton('DL_goInfo', 'Download data'))),
                         tags$br(),
                         tags$br()
                         ))
                     ),
             ## tab download ====
             tabItem(tabName = 'tabDownload', 
-                    h2('Download Data'),
+                    h2('Download Data by cell lines'),
                     fluidRow(box(width = 12,
                                  fluidRow(selectInput(inputId = "cellLineSelect", label = "Cell lines selection",
+                                                      width = '400px',
                                                       choices = cellLineNames,
                                                       multiple = TRUE)),
                                  fluidRow(radioButtons(inputId = "radioConv", label = "gene/circRNA data",
                                                        choices = c("circRNA level" = "circl",
                                                                    "Gene level" = "genel")
                                  )),
-                                 fluidRow(checkboxInput(inputId = "GOtermIn", label = "GO term included", value = TRUE)),
-                                 fluidRow(downloadButton(outputId = 'dlbulk', 'Download data'))
+                                 # fluidRow(checkboxInput(inputId = "GOtermIn", label = "GO term included", value = TRUE)),
+                                 fluidRow(downloadButton(outputId = 'dlbulk1', 'Download data'))
                                  )
-                             )
-                    )
-                   
+                             ),
+                    h2('Download Data by genes'),
+                    fluidRow(box(width = 12,
+                                 textAreaInput(inputId = "textAi1", 
+                                               label = "Gene names", 
+                                               value = "", 
+                                               width = "300px",
+                                               height = '400px'),
+                                 tags$br(),
+                                 fluidRow(radioButtons(inputId = "radioConv1", label = "gene/circRNA data",
+                                                       choices = c("circRNA level" = "circl",
+                                                                   "Gene level" = "genel")
+                                 )),
+                                 fluidRow(downloadButton(outputId = 'dlbulk2', 'Download data')),
+                                 tags$br(),
+                                 tags$br()
+                                 ))
+                    
+                    ),
+            ### tab help ====
+            tabItem(tabName = "tabHelp", #16
+                    fluidRow(column(12, h1(strong("Help and Documentation"), style = "color: #0073B7;font-size:35px")), align = "left"),
+                    box( width = '1000px', 
+                         # status = "info", 
+                         solidHeader = TRUE, 
+                         # title="Help and Documentation",
+                         br(),
+                         fluidRow(column(12,h4(HTML("<ul><li>circ2GO is a database that provide a complete circRNA expression profile for 60 cell lines, which contain 50 LUAD cell lines, 7 non-LUAD cell lines from lung cancer tissue, 3 cell lines from normal lung tissue. "))), align = "left"),
+                         fluidRow(column(12,h4(HTML("<ul><li>The <strong>circRNA Search</strong> options can be used to search the database for single gene's circRNA expression profile. The <strong>circRNA transcript map</strong> shows circRNA location on transcripts visually. The <strong>circRNA heatmap</strong> shows circRNA read counts in each cell lines. Hovering mouse on the heatmap will give the read count value and cell line names.The read count data in heatmap of searched gene could be downloaded in CSV file.</li></ul>"))), align = "left"),
+                         fluidRow(column(12,h4(HTML("<ul><li>The <strong>GO Search</strong> option can be used to search the database based on GO terms. With a list of genes searched out, users can get heatmap and visualized circRNA map respectively.</li></ul>"))), align = "left"),
+                         fluidRow(column(12,h4(HTML("<ul><li>The dataset could be download bulkly the option <strong>Data Dwnload</strong>. Data for cell lines can be downloaded selectively</li></ul>"))), align = "left"),
+                         br(),
+                         br()
+                         )
+                    ) # end tabItem #16    	 
             ),# tabItems
+        
 
         
         footer.all.pages
@@ -349,12 +437,7 @@ get_shiny_modules <- function(){
     
     # 1.3) ui ====
     ui <- dashboardPage(
-        # dashboardHeader(title = "circ2GO"),
-        dashboardHeader(
-          # title = HTML('<p style="font-size:100%;"><b style="font-size:160%;">circ2GO</b></p>')
-          title = img(src = "image/circ2go.png", height = 60)
-          ),
-        
+        dashboardHeader(title = img(src = "image/circ2go2.png", height = 60)),
         sidebar,
         body
     )
@@ -366,7 +449,7 @@ get_shiny_modules <- function(){
                                geneName = 'ENSG00000135776.4', 
                                tb.term = data.frame(),
                                tb.info = data.frame(),
-                               GoInfoTable.IDselected = 'Nothing select yet',
+                               GoInfoTable.IDselected = '',
                                plotlys = list(p1 = NULL, p2 = NULL),
                                mpV1 = 'ENSG00000135776',
                                boxInfo = list(geneName='',
@@ -382,7 +465,7 @@ get_shiny_modules <- function(){
         
         ## 140) mainPage ====
         output$logoImage <- renderImage({
-            outfile <- './www/Selection_048.png'
+            outfile <- './www/image/circ2GO.png'
             list(src = outfile,
                  contentType = 'image/png',
                  width = 400,
@@ -390,11 +473,11 @@ get_shiny_modules <- function(){
                  alt = "This is alternate text")
             }, deleteFile = FALSE)
         output$logoImage2 <- renderImage({
-          outfile <- './www/image/DKFZ_Logo_Small.png'
+          outfile <- './www/image/circ2logo.png'
           list(src = outfile,
                contentType = 'image/png',
-               width = 70,
-               height = 30,
+               width = 400,
+               height = 300,
                alt = "This is alternate text")
         }, deleteFile = FALSE)
         
@@ -402,16 +485,23 @@ get_shiny_modules <- function(){
         ## 141) circSpan ====
 
         ## 1412) get new geneName ====
-        observeEvent(input$Button.geneName,{
+        observeEvent(input$ButtonGeneName,{
             vals$mpV1 <- isolate(input$textInput.geneName)
             vals$boxInfo <- get_box_info(vals$mpV1)
-            output$textOutput.geneName <- renderText(vals$mpV1)
-            output
-            print('what happened?')
+            
+            a <- vals$boxInfo$geneID 
+            d <- datasets$df.go
+            e <- d[d$Gene.stable.ID == a,c(9:12)]
+            e <- e[order(e$GO.term.name),]
+            colnames(e) <- gsub('\\.', ' ', colnames(e))
+            # edit
+            vals$goTable2 <- e
+            output$GoTermTableInfobox2 <- renderDT(e[,c(-2)], selection = 'single', rownames = FALSE)
         })
             
-            
-        observeEvent(input$Button.geneName, {
+        ## 14121) plot circ map ====
+        observeEvent(input$ButtonGeneName, {
+            wait()
             vals$geneName <- isolate(input$textInput.geneName)
             data.geneID <- plot_circSpan_1(datasets, vals$geneName)
             if (nrow(data.geneID$df.geneID.transcripts) == 0){
@@ -460,31 +550,33 @@ get_shiny_modules <- function(){
         output$ui1 <- renderUIx()
         output$ui2 <- renderUIx()
         
+        ## 14122) box info table click ====
+        observeEvent(input$GoTermTableInfobox2_cell_clicked, {
+          list.tb1.select <- isolate(input$GoTermTableInfobox2_cell_clicked)
+          if (length(list.tb1.select) >0 ){
+            go.term.index <- list.tb1.select[[1]]
+            output$goTermDefi2 <- renderText(as.character(vals$goTable2[go.term.index, 2]))
+          }
+        })
+        
         ## 1413) output click coordination ====
         observeEvent(input$image_click, {
             x <- isolate(input$image_click$x)
             y <- isolate(input$image_click$y)
             vals$co.default <- c(x,y)
             teID <- get_transID(vals$co.default)
-            # browser()
             if (teID == 'empty'){return()}
             showModal(modalDialog(
                 easyClose = TRUE,
-                tagList(
-                    # textInput("newfilename", label = "Filename", placeholder = "my_file.txt")
-                    # textOutput(outputId = 'ID_text')
-                    teID
-                ), 
-                title="Plot selected circRNA?",
+                tagList(teID), 
+                title="Plot heatmap for selected ID?",
                 footer = tagList(actionButton("confirmPlot", "Plot"),
                                  modalButton("Cancel")
                 )
             ))
-            # browser()
-
         })
         observeEvent(input$confirmPlot, {
-            print('popup confirm')
+            wait()
             removeModal()
             vals$plotlys <- heatmap_geneID(get_transID(vals$co.default))
             updateTabItems(session, "sideBarID", 'TabcircHp')
@@ -497,23 +589,18 @@ get_shiny_modules <- function(){
         output$ID_text <- renderText(get_transID(vals$co.default))
         
         
-        ## 1414) plot circSpan ====
-        output$image_clickinfo <- renderPrint({
-            cat("Click:\n")
-            str(input$image_click)
-        })
+
         
         ## 142) Go Table ====
         observeEvent(input$actBGoTerm, {
-            print('it works')
             x.s <- grep(isolate(input$autoC1), x.long, value=TRUE)
             x.s1 <- grep(isolate(input$autoC2), x.s, value=TRUE)
-            # browser()
             vals$tb.term <- y4[y4$GO.term.name %in% x.s1,]
             colnames(vals$tb.term) <- gsub('\\.', ' ', colnames(vals$tb.term))
             })
         
         output$GoTermTable <- renderDT(vals$tb.term[,c(-3)], selection = 'single', rownames = FALSE)
+        
         # output$GoTermTable <- renderDT(iris, selection = 'single', rownames=FALSE)
       
         observeEvent(input$GoTermTable_cell_clicked, {
@@ -534,7 +621,7 @@ get_shiny_modules <- function(){
         output$goTermDefi <- renderText(vals$go.term.defi)
         output$GoInfoTable <- renderDT(vals$tb.info, selection = 'single', rownames = FALSE)
         
-        ##1423) flow3: table GO heatmap ====
+        ##1423)table GO heatmap ====
         
         observeEvent(input$GoInfoTable_cell_clicked,{
             list.tb2.select <- isolate(input$GoInfoTable_cell_clicked)
@@ -547,21 +634,38 @@ get_shiny_modules <- function(){
         output$go_vb_geneID_hp <- renderText(vals$GoInfoTable.IDselected)
         
         observeEvent(input$GoGeneIDHp,{
+            wait()
             print('GoGeneIDHpButton:')
-            # browser()
             vals$boxInfo <- get_box_info(vals$GoInfoTable.IDselected)
             vals$plotlys <- heatmap_geneID(vals$GoInfoTable.IDselected)
-            # output$hp.vb.geneID <- renderText(vals$GoInfoTable.IDselected)
             updateTabItems(session, "sideBarID", 'TabcircHp')
             })
+        ##1423) table GO circMap ====
+        observeEvent(input$GoGeneIDcm,{
+          wait()
+          vals$boxInfo <- get_box_info(vals$GoInfoTable.IDselected)
+          data.geneID <- plot_circSpan_1(datasets, vals$GoInfoTable.IDselected)
+          if (nrow(data.geneID$df.geneID.transcripts) == 0){
+            return(NULL)
+          }
+          outfile <- data.geneID$file.output
+          png1 <- readPNG(outfile)
+          width1 <- dim(png1)[2]
+          height1 <- dim(png1)[1]
+          output$myImage <- renderImage({
+            print(paste('height: ',height1))
+            print(width1)
+            list(src = outfile,
+                 # contentType = 'image/svg+xml',
+                 contentType = 'image/png',
+                 width = width1,
+                 height = height1,
+                 alt = "This is alternate text")
+          }, deleteFile = TRUE)
+          updateTabItems(session, "sideBarID", 'circSpan')
+        })
         
-        # observeEvent(input$GoGeneIDHp.circSpan,{
-        #     print('GoGeneIDHpButton.circSpan:')
-        #     # browser()
-        #     vals$plotlys <- heatmap_geneID(get_transID(vals$co.default))
-        #     updateTabItems(session, "sideBarID", 'TabcircHp')
-        #     # output$hp.vb.geneID <- renderText(get_transID(vals$co.default))
-        #     })
+
         
         ## 1424) download table ====
         output$DL_goInfo <- downloadHandler(
@@ -573,20 +677,39 @@ get_shiny_modules <- function(){
           })
         
         ## 143) heatmap geneID ====
-        observeEvent(input$Button.geneName.heatmap, {
-            # browser()
-            vals$mpV1 <- isolate(input$textInput.geneName.heatmap)
+        ## 1430) infobox/goTable ====
+        observeEvent(input$ButtonGeneNameHeatmap, {
+            wait()
+            vals$mpV1 <- isolate(input$textInput_eneName_heatmap)
             vals$boxInfo <- get_box_info(vals$mpV1)
+            a <- vals$boxInfo$geneID 
+            d <- datasets$df.go
+            e <- d[d$Gene.stable.ID == a,c(9,10,11,12)]
+            e <- e[order(e$GO.term.name),]
+            colnames(e) <- gsub('\\.', ' ', colnames(e))
+            vals$goTable1 <- e
+            output$GoTermTableInfobox1 <- renderDT(e[,c(1,3,4)], selection = 'single', rownames = FALSE)
             
             vals$plotlys <- heatmap_geneID(vals$mpV1)
-            # output$hp.vb.geneID <- renderText(vals$mpV1)
         })
+        
+        ## 1431) goTable defination ====
+        # GoTermTable_cell_clicked
+        
+        observeEvent(input$GoTermTableInfobox1_cell_clicked, {
+          list.tb1.select <- isolate(input$GoTermTableInfobox1_cell_clicked)
+          if (length(list.tb1.select) >0 ){
+            go.term.index <- list.tb1.select[[1]]
+            output$goTermDefi1 <- renderText(as.character(vals$goTable1[go.term.index, 2]))}
+        })
+        
+        ## 1432) plots ====
         output$plotlyHp1 <- renderPlotly(vals$plotlys$p1)
         output$plotlyHp2 <- renderPlotly(vals$plotlys$p2)
-        
+        ## 1433) downloader ====
         output$DL_circ <- downloadHandler(
           filename = function() { 
-            paste("dataset_", isolate(input$textInput.geneName.heatmap), ".csv", sep="")
+            paste("dataset_", isolate(input$textInput_eneName_heatmap), ".csv", sep="")
           },
           content = function(file) {
             df <- readRDS('./0_data/df.geneID.circ.rdata')
@@ -595,41 +718,69 @@ get_shiny_modules <- function(){
         
         output$DL_circ_cellLines <- downloadHandler(
           filename = function() { 
-            paste("dataset_", isolate(input$textInput.geneName.heatmap), ".csv", sep="")
+            paste("dataset_", isolate(input$textInput_eneName_heatmap), ".csv", sep="")
           },
           content = function(file) {
             df <- readRDS('./0_data/df.geneID.circ.cellLines.rdata')
             write.csv(df, file)
           })
         ## 144) bulk downlaod ====
-        output$dlbulk <- downloadHandler(
+        output$dlbulk1 <- downloadHandler(
           filename = function() { 
             paste("dataset_circRNA_readCounts.csv", sep="")
           },
           content = function(file) {
-            # edit
             celllines <- isolate(input$cellLineSelect)
             all <- 'all cell lines'
             if(all %in% celllines)celllines<- cellLineNames[-1]
             conv <- isolate(input$radioConv)
-            gotermIn <- isolate(input$GOtermIn)
+            # gotermIn <- isolate(input$GOtermIn)
             if (conv == 'circl'){
               e <- datasets$cft[,c(1:72)]
-              colnames(e)
               colnames(e)[13:72] <- str_match(colnames(e)[13:72], '\\dD_(.*)_\\d')[,2]
-              e1 <- e[, colnames(e) %in% celllines]
+              e1 <- e[, celllines]
+              e1 <- as.data.frame(e1)
+              if (ncol(e1) == 1)colnames(e1) <- celllines
               e2 <- cbind(e[,c(1:12)], e1)
+            }else{
+              e <- datasets$df.circ.conv[,c(1:64)]
+              colnames(e)[5:64] <- str_match(colnames(e)[5:64], '\\dD_(.*)_\\d')[,2]
+              e1 <- e[, celllines]
+              e1 <- as.data.frame(e1)
+              if (ncol(e1) == 1)colnames(e1) <- celllines
+              e2 <- cbind(e[,c(1:4)], e1)
+            }
+            write.csv(e2[1:100,], file)
+          })
+        output$dlbulk2 <- downloadHandler(
+          filename = function() { 
+            paste("dataset_circRNA_readCounts.csv", sep="")
+          },
+          
+          content = function(file) {
+            a <- isolate(input$textAi1)
+            a <- strsplit(a, split = '\\s|;|,')
+            a <- unlist(lapply(a, function(x) x[nchar(x) >= 1]))
+            
+            conv <- isolate(input$radioConv1)
+            if (conv == 'circl'){
+              e <- datasets$cft[,c(1:72)]
+              colnames(e)[13:72] <- str_match(colnames(e)[13:72], '\\dD_(.*)_\\d')[,2]
+              e1 <- e[e$geneName %in% a,]
+              e1 <- as.data.frame(e1)
               
             }else{
               e <- datasets$df.circ.conv[,c(1:64)]
-              colnames(e)
               colnames(e)[5:64] <- str_match(colnames(e)[5:64], '\\dD_(.*)_\\d')[,2]
-              e1 <- e[, colnames(e) %in% celllines]
-              e2 <- cbind(e[,c(1:4)], e1)
+              e1 <- e[e$geneName %in% a,]
+              e1 <- as.data.frame(e1)
+              
             }
-            write.csv(e2, file)
-          })
-        
+
+            write.csv(e1, file)
+          }
+          
+        )
     } # end of server
     ## return ui/server ====
     list1 <- list(ui = ui, 
