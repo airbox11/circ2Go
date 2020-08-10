@@ -79,6 +79,8 @@ Prepare_dataset <- function(){
 
 load_dataset<- function(){
     list1 <- readRDS(file = paste(dir.base, '0_data', 'datasets.rdata', sep = '/'))
+    x <- list1$df.go
+    list1$df.go <- x[x$GO.term.name != '',]
     return(list1)
 }
 

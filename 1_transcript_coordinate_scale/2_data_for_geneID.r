@@ -1,4 +1,4 @@
-# ## 0) functions ====
+
 # l.x <- function(x,p){
 #     print(length(unique(as.character(factor(x)))))
 #     if(p == 1){
@@ -15,7 +15,7 @@
 # l.x(df.te.circGene$transID,2)
 # dim(df.te.circGene)
 
-##0) functions ====
+## functions: ====
 split_vector <- function(x, sep = ',', type = 'char'){
     # x <- df.geneID.transcripts$exons_start[1]
     
@@ -28,17 +28,34 @@ split_vector <- function(x, sep = ',', type = 'char'){
 }
 
 
+caseIn0 <- function(m, class){
+    a <- datasets$df.te.circGene.git
+    name <- unique(a[[class]])
+    nameUp <- toupper(name)
+    b <- data.frame(name, nameUp)
+    
+    m.up <- toupper(m)
+    x <- b[b$nameUp == m.up, ]$name
+    if (length(x)>0){
+        m <- x
+    }
+    return(m)
+}
+
 format_geneID <- function(geneID){
     m.git <- datasets$df.te.circGene.git
     if(str_detect(geneID, 'ENSG')){
+        geneID <- caseIn0(geneID, 'geneID')
         geneID <- unlist(sapply(geneID, strsplit, '\\.', USE.NAMES = FALSE))[1]
     }else if(str_detect(geneID, 'ENST')){
+        geneID <- caseIn0(geneID, 'transID')
         transID <- unlist(sapply(geneID, strsplit, '\\.', USE.NAMES = FALSE))[1]
         geneID <- m.git[m.git$transID == transID,]$geneID
     }else if(str_detect(geneID, 'chr')){
         m <- datasets$cft.lite
         geneID <- m[m$teID == geneID,]$geneID
     }else{
+        geneID <- caseIn0(geneID, 'geneName')
         if(geneID == 'TBCE'){
             geneID <- 'ENSG00000285053'
             type <- 'geneID'
@@ -61,34 +78,55 @@ format_geneID <- function(geneID){
 }
 
 get_geneID_data <- function(datasets, geneID){
-    ##2) get circ and transID for each geneID ====
+
+    ##1) get circ and transID for each geneID ====
     # geneID <- 'ENSG00000135776.4'
     geneID.a <- format_geneID(geneID)
     cft.lite <- datasets$cft.lite
     df.te.circGene <- datasets$df.te.circGene
-    ### 2.1) circ: ====
+    ### 1.1) circ ====
     
     df.geneID.circ <- cft.lite[cft.lite$geneID == geneID.a,]
     df.geneID.circ <- df.geneID.circ[order(df.geneID.circ$start),]
 
 
     ## 1.2) transIDs ====
-    
-    # df.geneID.transcripts <- df.te.circGene[df.te.circGene$geneID == geneID,]
     df.geneID.transcripts <- df.te.circGene[df.te.circGene$geneID == geneID.a,]
-    df.geneID.transcripts$exons_start <- sapply(df.geneID.transcripts$exons_start, split_vector, ',','num',USE.NAMES = FALSE)
-    df.geneID.transcripts$exons_end <- sapply(df.geneID.transcripts$exons_end, split_vector, sep = ',', type = 'num', USE.NAMES = FALSE)
+    
+    # format_start_end <- function(df)
+    if (nrow(df.geneID.transcripts) == 0){
+        list1 <- list(df.geneID.circ = df.geneID.circ, 
+                      df.geneID.transcripts = df.geneID.transcripts, 
+                      max.value = 0,
+                      base = 0)
+        return(list1)
+        }
+    for(i in 1:nrow(df.geneID.transcripts)){
+        x <- df.geneID.transcripts[i,]$exons_start
+        x <- as.numeric(unlist(sapply(x, strsplit, ',', USE.NAMES = FALSE)))
+        x <- list(x)
+        df.geneID.transcripts[i,]$exons_start <- x
+        
+        x <- df.geneID.transcripts[i,]$exons_end
+        x <- as.numeric(unlist(sapply(x, strsplit, ',', USE.NAMES = FALSE)))
+        x <- list(x)
+        df.geneID.transcripts[i,]$exons_end <- x
+    }
+
     df.geneID.transcripts <- df.geneID.transcripts[order(df.geneID.transcripts$LT),]
     ## 1.2.1) 
     x <- df.geneID.transcripts$exons_start
     base <- min(unlist(x))
-    minxf <- function(x){
-        base <<- base
-        x <- x-base+1
-    }
+    df.geneID.transcripts$exons_start_base <- 0
+    df.geneID.transcripts$exons_end_base <- 0
     
-    df.geneID.transcripts$exons_start_base <- sapply(df.geneID.transcripts$exons_start, minxf,USE.NAMES = FALSE)
-    df.geneID.transcripts$exons_end_base <- sapply(df.geneID.transcripts$exons_end, minxf,USE.NAMES = FALSE)
+    for(i in 1:nrow(df.geneID.transcripts)){
+        x <- unlist(df.geneID.transcripts[i,]$exons_start)
+        df.geneID.transcripts[i,]$exons_start_base <- list(x-base+1)
+        
+        x <- unlist(df.geneID.transcripts[i,]$exons_end)
+        df.geneID.transcripts[i,]$exons_end_base <- list(x-base+1)
+    }
     max.value <- max(unlist(df.geneID.transcripts$exons_end)) - base + 1
     
     ## return data:

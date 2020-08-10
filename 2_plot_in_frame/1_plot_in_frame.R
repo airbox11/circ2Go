@@ -1,3 +1,4 @@
+
 plot_circSpan_1 <- function(datasets, geneName = 'ENSG00000135776.4'){
     ## 2) get data for a geneID ====
     data.geneID <- get_geneID_data(datasets, geneName)
@@ -14,12 +15,12 @@ plot_circSpan_1 <- function(datasets, geneName = 'ENSG00000135776.4'){
 
 plot_circSpan <- function(data.geneID){
     ## 0.1) functions ====
-    seg2 <- function(x,y,hight,width){
-        segments(x,y,x,y-hight, col= 'green')
-        segments(x,y-hight,x+width,y-hight, col= 'green')
-        segments(x+width,y-hight,x+width,y, col= 'green')
-        segments(x+width,y,x,y, col= 'green')
-    }
+    # seg2 <- function(x,y,hight,width){ 
+    #     segments(x,y,x,y-hight, col= 'green')
+    #     segments(x,y-hight,x+width,y-hight, col= 'green')
+    #     segments(x+width,y-hight,x+width,y, col= 'green')
+    #     segments(x+width,y,x,y, col= 'green')
+    # }
     
     ## 0.2) basic values ====
     df.geneID.circ <- data.geneID$df.geneID.circ
@@ -185,7 +186,8 @@ plot_circSpan <- function(data.geneID){
                     row.horizon.position <- perc2px.y(0)-row.accu*row.height
                     
                     ## 2.1.31) plot circ span ====
-                    text(x = co.transID, y = row.horizon.position, df[m,]$teID, 
+                    # edit
+                    text(x = co.transID, y = row.horizon.position, df[m,]$teID,
                          cex = font.size.txt.circ, font = 1, col = "blue", adj = c(0,1)
                     )
                     df.th[nrow(df.th) + 1,] <- list(as.character(df[m,]$teID), df.geneID.transcripts[i,]$LT)
@@ -206,7 +208,7 @@ plot_circSpan <- function(data.geneID){
                              y0 = row.horizon.position - distance.circ.span,
                              x1 = co.circ.e,
                              y1 = row.horizon.position - distance.circ.span,
-                             col= 'green',
+                             col= 'blue',
                              lwd=2
                     )
                     ## 2.1.32) plot exp ====
@@ -260,7 +262,7 @@ plot_circSpan <- function(data.geneID){
                      y0 = row.horizon.position.top,
                      x1 = co.point.e,
                      y1 = row.horizon.position.bottom,
-                     col= 'blue',
+                     col= 'green',
                      lty = 3,
                      lwd = 0.3
             )
