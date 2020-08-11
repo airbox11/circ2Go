@@ -4,6 +4,7 @@ setwd(dir.base)
 ## 1) repare big datasets ====
 
 ## 2) running shiny ====
-source('./3_shiny_frame/3.1_shiny_frame.r')
+
+source('./3_shiny_frame/3.1_functions.r')
 us <- get_shiny_modules()
 shinyApp(us$ui, us$server)
